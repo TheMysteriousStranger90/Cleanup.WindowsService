@@ -32,10 +32,11 @@ public sealed class CleanupService
     {
         CleanDirectory(Path.GetTempPath(), "Temp folder");
     }
-    
+
     public void CleanDownloadsFolder()
     {
-        string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+        string downloadsPath =
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
         CleanDirectory(downloadsPath, "Downloads");
     }
 
@@ -57,8 +58,10 @@ public sealed class CleanupService
         {
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Logs"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Panther"),
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "SoftwareDistribution", "Download"),
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Microsoft", "Windows", "WER", "Temp")
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "SoftwareDistribution",
+                "Download"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Microsoft",
+                "Windows", "WER", "Temp")
         };
 
         foreach (var logPath in logPaths)
@@ -214,20 +217,74 @@ public sealed class CleanupService
                 DirectoryInfo di = new DirectoryInfo(path);
                 foreach (FileInfo file in di.GetFiles())
                 {
-                    file.Delete();
+                    TryDeleteFile(file);
                 }
 
                 foreach (DirectoryInfo dir in di.GetDirectories())
                 {
-                    dir.Delete(true);
+                    TryDeleteDirectory(dir);
                 }
 
                 _logger.LogInformation($"{folderName} cleaned successfully.");
             }
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, $"Access to {folderName} is denied.");
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, $"Error cleaning {folderName}");
+        }
+    }
+    
+    private void TryDeleteFile(FileInfo file)
+    {
+        const int MaxRetries = 1;
+        const int DelayBetweenRetries = 500;
+
+        for (int i = 0; i < MaxRetries; i++)
+        {
+            try
+            {
+                file.Delete();
+                _logger.LogInformation($"File {file.FullName} deleted successfully.");
+                return;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, $"Access to the file '{file.FullName}' is denied.");
+                return;
+            }
+            catch (IOException ex) when (IsFileLocked(ex))
+            {
+                _logger.LogWarning(ex, $"File {file.FullName} is in use, retrying...");
+                Thread.Sleep(DelayBetweenRetries);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error deleting file {file.FullName}");
+                return;
+            }
+        }
+
+        _logger.LogWarning($"Could not delete file {file.FullName} after {MaxRetries} attempts.");
+    }
+
+    private void TryDeleteDirectory(DirectoryInfo dir)
+    {
+        try
+        {
+            dir.Delete(true);
+            _logger.LogInformation($"Directory {dir.FullName} deleted successfully.");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, $"Access to the directory '{dir.FullName}' is denied.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error deleting directory {dir.FullName}");
         }
     }
 
@@ -271,5 +328,11 @@ public sealed class CleanupService
         {
             _logger.LogError(ex, $"Error deleting files with pattern {pattern} in {directory}");
         }
+    }
+
+    private bool IsFileLocked(IOException exception)
+    {
+        int errorCode = Marshal.GetHRForException(exception) & ((1 << 16) - 1);
+        return errorCode == 32 || errorCode == 33;
     }
 }

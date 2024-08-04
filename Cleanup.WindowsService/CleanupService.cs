@@ -237,7 +237,12 @@ public sealed class CleanupService
         {
             if (Directory.Exists(directory))
             {
-                var files = Directory.GetFiles(directory, pattern, SearchOption.AllDirectories);
+                var enumerationOptions = new EnumerationOptions
+                {
+                    IgnoreInaccessible = true,
+                };
+
+                var files = Directory.GetFiles(directory, pattern, enumerationOptions);
                 foreach (var file in files)
                 {
                     try

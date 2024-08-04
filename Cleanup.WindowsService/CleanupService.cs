@@ -237,13 +237,30 @@ public sealed class CleanupService
         {
             if (Directory.Exists(directory))
             {
-                foreach (var file in Directory.GetFiles(directory, pattern, SearchOption.AllDirectories))
+                var files = Directory.GetFiles(directory, pattern, SearchOption.AllDirectories);
+                foreach (var file in files)
                 {
-                    File.Delete(file);
+                    try
+                    {
+                        File.Delete(file);
+                        _logger.LogInformation($"File {file} deleted successfully.");
+                    }
+                    catch (UnauthorizedAccessException ex)
+                    {
+                        _logger.LogError(ex, $"Access to the file '{file}' is denied.");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, $"Error deleting file '{file}'");
+                    }
                 }
 
                 _logger.LogInformation($"Files with pattern {pattern} deleted successfully in {directory}.");
             }
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, $"Access to the directory '{directory}' is denied.");
         }
         catch (Exception ex)
         {

@@ -237,7 +237,7 @@ public sealed class CleanupService
             _logger.LogError(ex, $"Error cleaning {folderName}");
         }
     }
-    
+
     private void TryDeleteFile(FileInfo file)
     {
         const int MaxRetries = 1;
@@ -258,7 +258,7 @@ public sealed class CleanupService
             }
             catch (IOException ex) when (IsFileLocked(ex))
             {
-                _logger.LogWarning(ex, $"File {file.FullName} is in use, retrying...");
+                _logger.LogWarning(ex, $"File {file.FullName} is in use by another process, will retry...");
                 Thread.Sleep(DelayBetweenRetries);
             }
             catch (Exception ex)
@@ -268,7 +268,8 @@ public sealed class CleanupService
             }
         }
 
-        _logger.LogWarning($"Could not delete file {file.FullName} after {MaxRetries} attempts.");
+        _logger.LogWarning(
+            $"Could not delete file {file.FullName} after {MaxRetries} attempts due to it being in use by another process.");
     }
 
     private void TryDeleteDirectory(DirectoryInfo dir)
@@ -281,6 +282,10 @@ public sealed class CleanupService
         catch (UnauthorizedAccessException ex)
         {
             _logger.LogWarning(ex, $"Access to the directory '{dir.FullName}' is denied.");
+        }
+        catch (IOException ex) when (IsFileLocked(ex))
+        {
+            _logger.LogWarning(ex, $"Directory {dir.FullName} is in use by another process. Skipping deletion.");
         }
         catch (Exception ex)
         {

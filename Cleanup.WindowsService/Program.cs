@@ -19,10 +19,7 @@ builder.Services.AddHostedService<WindowsBackgroundService>();
 builder.Logging.AddConfiguration(
     builder.Configuration.GetSection("Logging"));
 
-builder.Logging.AddEventLog(settings =>
-{
-    settings.SourceName = ServiceName;
-});
+builder.Logging.AddEventLog(settings => { settings.SourceName = ServiceName; });
 
 string logFilePath = WindowsServicePathHelperForLogs.GenerateWindowsServiceFilePath();
 builder.Logging.AddProvider(new FileLoggerProvider(logFilePath));
@@ -37,19 +34,28 @@ if (args is { Length: 1 })
         if (args[0] is "/Install")
         {
             await Cli.Wrap("sc")
-                .WithArguments(new[] { "create", ServiceName, $"binPath={executablePath}", "start=auto", "obj=LocalSystem" })
+                .WithArguments(new[]
+                    { "create", ServiceName, $"binPath={executablePath}", "start=auto", "obj=LocalSystem" })
                 .ExecuteAsync();
-            
+
             await Cli.Wrap("sc")
                 .WithArguments(new[] { "description", ServiceName, ServiceDescription })
                 .ExecuteAsync();
-            
+
             await Cli.Wrap("reg")
-                .WithArguments(new[] { "add", $@"HKLM\SYSTEM\CurrentControlSet\Services\{ServiceName}\Parameters", "/v", "Logging:LogLevel:Default", "/t", "REG_SZ", "/d", "Information", "/f" })
+                .WithArguments(new[]
+                {
+                    "add", $@"HKLM\SYSTEM\CurrentControlSet\Services\{ServiceName}\Parameters", "/v",
+                    "Logging:LogLevel:Default", "/t", "REG_SZ", "/d", "Information", "/f"
+                })
                 .ExecuteAsync();
 
             await Cli.Wrap("reg")
-                .WithArguments(new[] { "add", $@"HKLM\SYSTEM\CurrentControlSet\Services\{ServiceName}\Parameters", "/v", "EventLog:SourceName", "/t", "REG_SZ", "/d", "The Cleanup Windows Service", "/f" })
+                .WithArguments(new[]
+                {
+                    "add", $@"HKLM\SYSTEM\CurrentControlSet\Services\{ServiceName}\Parameters", "/v",
+                    "EventLog:SourceName", "/t", "REG_SZ", "/d", "The Cleanup Windows Service", "/f"
+                })
                 .ExecuteAsync();
         }
         else if (args[0] is "/Uninstall")

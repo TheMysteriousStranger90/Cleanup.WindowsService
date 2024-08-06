@@ -1,9 +1,5 @@
-﻿using System;
-using System.Diagnostics;
-using System.IO;
+﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Threading;
-using Microsoft.Extensions.Logging;
 
 namespace Cleanup.WindowsService;
 
@@ -15,7 +11,7 @@ public sealed class CleanupService
     {
         _logger = logger;
     }
-    
+
     public bool RunCleanupTasks()
     {
         try
@@ -28,16 +24,11 @@ public sealed class CleanupService
             CleanOldFiles();
             CleanTraceFiles();
             CleanHistory();
-            /*
             CleanTempFolder();
             CleanPrefetchFolder();
             CleanWindowsTempFolder();
             CleanLogFiles();
             CleanEventLogs();
-
-            
-
-            */
             RunSystemFileChecker();
 
             _logger.LogInformation("All cleanup tasks completed successfully.");
@@ -271,15 +262,18 @@ public sealed class CleanupService
                 _logger.LogInformation($"{folderName} cleaned successfully.");
             }
         }
-        catch (UnauthorizedAccessException ex)
+        catch (UnauthorizedAccessException)
         {
-            _logger.LogWarning(ex, $"Access to {folderName} is denied.");
+        }
+        catch (IOException ex) when (IsFileLocked(ex))
+        {
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, $"Error cleaning {folderName}");
         }
     }
+
 
     private void TryDeleteFile(FileInfo file)
     {
@@ -296,12 +290,9 @@ public sealed class CleanupService
             }
             catch (UnauthorizedAccessException ex)
             {
-                _logger.LogWarning(ex, $"Access to the file '{file.FullName}' is denied.");
-                return;
             }
             catch (IOException ex) when (IsFileLocked(ex))
             {
-                _logger.LogWarning(ex, $"File {file.FullName} is in use by another process, will retry...");
                 Thread.Sleep(DelayBetweenRetries);
             }
             catch (Exception ex)
@@ -322,13 +313,14 @@ public sealed class CleanupService
             dir.Delete(true);
             _logger.LogInformation($"Directory {dir.FullName} deleted successfully.");
         }
-        catch (UnauthorizedAccessException ex)
+        catch (UnauthorizedAccessException)
         {
-            _logger.LogWarning(ex, $"Access to the directory '{dir.FullName}' is denied.");
         }
         catch (IOException ex) when (IsFileLocked(ex))
         {
-            _logger.LogWarning(ex, $"Directory {dir.FullName} is in use by another process. Skipping deletion.");
+        }
+        catch (IOException ex)
+        {
         }
         catch (Exception ex)
         {
@@ -355,9 +347,11 @@ public sealed class CleanupService
                         File.Delete(file);
                         _logger.LogInformation($"File {file} deleted successfully.");
                     }
-                    catch (UnauthorizedAccessException ex)
+                    catch (UnauthorizedAccessException)
                     {
-                        _logger.LogError(ex, $"Access to the file '{file}' is denied.");
+                    }
+                    catch (IOException ex) when (IsFileLocked(ex))
+                    {
                     }
                     catch (Exception ex)
                     {
@@ -368,9 +362,8 @@ public sealed class CleanupService
                 _logger.LogInformation($"Files with pattern {pattern} deleted successfully in {directory}.");
             }
         }
-        catch (UnauthorizedAccessException ex)
+        catch (UnauthorizedAccessException)
         {
-            _logger.LogError(ex, $"Access to the directory '{directory}' is denied.");
         }
         catch (Exception ex)
         {

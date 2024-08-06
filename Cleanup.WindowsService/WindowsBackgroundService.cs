@@ -13,13 +13,14 @@ public sealed class WindowsBackgroundService : BackgroundService
     private readonly ILogger<WindowsBackgroundService> _logger;
     private readonly ILogger _fileLogger;
     private readonly string _logFilePath = WindowsServicePathHelperForLogs.GenerateWindowsServiceFilePath();
+
     public WindowsBackgroundService(
         CleanupService cleanupService,
         ILogger<WindowsBackgroundService> logger)
     {
         _cleanupService = cleanupService;
         _logger = logger;
-        
+
         var fileLoggerProvider = new FileLoggerProvider(_logFilePath);
         _fileLogger = fileLoggerProvider.CreateLogger(nameof(WindowsBackgroundService));
     }
@@ -36,7 +37,7 @@ public sealed class WindowsBackgroundService : BackgroundService
                 {
                     _logger.LogInformation("Cleanup started at: {time}", DateTimeOffset.Now);
                 }
-                
+
                 bool success = _cleanupService.RunCleanupTasks();
 
                 if (_logger.IsEnabled(LogLevel.Information))
@@ -56,7 +57,7 @@ public sealed class WindowsBackgroundService : BackgroundService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "{Message}", ex.Message);
-                
+
                 Environment.Exit(1);
             }
         }

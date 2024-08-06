@@ -1,4 +1,11 @@
-﻿namespace Cleanup.WindowsService;
+﻿using System;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+namespace Cleanup.WindowsService;
 
 public sealed class WindowsBackgroundService : BackgroundService
 {
@@ -12,56 +19,56 @@ public sealed class WindowsBackgroundService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        try
+        //await Task.Delay(TimeSpan.FromHours(2), stoppingToken);
+
+        while (!stoppingToken.IsCancellationRequested)
         {
-            while (!stoppingToken.IsCancellationRequested)
+            try
             {
                 if (_logger.IsEnabled(LogLevel.Information))
                 {
                     _logger.LogInformation("Cleanup started at: {time}", DateTimeOffset.Now);
                 }
 
-                _cleanupService.EmptyRecycleBin();
-                _cleanupService.CleanTempFolder();
-                _cleanupService.CleanDownloadsFolder();
-                _cleanupService.CleanPrefetchFolder();
-                _cleanupService.CleanWindowsTempFolder();
-                _cleanupService.CleanLogFiles();
-                _cleanupService.CleanEventLogs();
-                _cleanupService.CleanOldFiles();
-                _cleanupService.CleanTraceFiles();
-                _cleanupService.CleanHistory();
-                _cleanupService.CleanCookies();
-                _cleanupService.CleanRemnantDriverFiles();
-                _cleanupService.ResetDnsResolverCache();
-                _cleanupService.RunSystemFileChecker();
+                string logFilePath = WindowsServicePathHelperForLogs.GenerateWindowsServiceFilePath();
 
-                if (_logger.IsEnabled(LogLevel.Information))
+                using (var writer = new StreamWriter(logFilePath, true))
                 {
-                    _logger.LogInformation("Cleanup finished at: {time}", DateTimeOffset.Now);
+                    bool success = _cleanupService.RunCleanupTasks();
+
+                    if (_logger.IsEnabled(LogLevel.Information))
+                    {
+                        writer.WriteLine("Cleanup finished at: {0}", DateTimeOffset.Now);
+                        _logger.LogInformation("Cleanup finished at: {time}", DateTimeOffset.Now);
+                    }
+
+                    var delayTime = success ? TimeSpan.FromHours(1) : TimeSpan.FromHours(2);
+
+                    writer.WriteLine(success ? "Next cleanup scheduled in 24 hours." : "Retry scheduled in 2 hours.");
+                    writer.Flush();
+
+                    await Task.Delay(delayTime, stoppingToken);
                 }
-
-                await Task.Delay(TimeSpan.FromDays(1), stoppingToken);
             }
-        }
-        catch (OperationCanceledException)
-        {
-            // When the stopping token is canceled, for example, a call made from services.msc,
-            // we shouldn't exit with a non-zero exit code. In other words, this is expected...
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "{Message}", ex.Message);
+            catch (OperationCanceledException)
+            {
+                // Когда токен остановки отменяется, например, при вызове из services.msc,
+                // не следует завершать с ненулевым кодом выхода. Другими словами, это ожидаемое...
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "{Message}", ex.Message);
 
-            // Terminates this process and returns an exit code to the operating system.
-            // This is required to avoid the 'BackgroundServiceExceptionBehavior', which
-            // performs one of two scenarios:
-            // 1. When set to "Ignore": will do nothing at all, errors cause zombie services.
-            // 2. When set to "StopHost": will cleanly stop the host, and log errors.
-            //
-            // In order for the Windows Service Management system to leverage configured
-            // recovery options, we need to terminate the process with a non-zero exit code.
-            Environment.Exit(1);
+                // Завершает этот процесс и возвращает код выхода в операционную систему.
+                // Это необходимо, чтобы избежать 'BackgroundServiceExceptionBehavior', который
+                // выполняет один из двух сценариев:
+                // 1. Когда установлено "Ignore": ничего не делать, ошибки вызывают зомби-сервисы.
+                // 2. Когда установлено "StopHost": чисто остановить хост и записать ошибки в лог.
+                //
+                // Для того чтобы система управления сервисами Windows могла использовать
+                // настроенные параметры восстановления, необходимо завершить процесс с ненулевым кодом выхода.
+                Environment.Exit(1);
+            }
         }
     }
 }

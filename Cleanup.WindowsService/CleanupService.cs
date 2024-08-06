@@ -1,5 +1,9 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading;
+using Microsoft.Extensions.Logging;
 
 namespace Cleanup.WindowsService;
 
@@ -11,15 +15,54 @@ public sealed class CleanupService
     {
         _logger = logger;
     }
+    
+    public bool RunCleanupTasks()
+    {
+        try
+        {
+            EmptyRecycleBin();
+            CleanDownloadsFolder();
+            CleanCookies();
+            CleanRemnantDriverFiles();
+            ResetDnsResolverCache();
+            CleanOldFiles();
+            CleanTraceFiles();
+            CleanHistory();
+            /*
+            CleanTempFolder();
+            CleanPrefetchFolder();
+            CleanWindowsTempFolder();
+            CleanLogFiles();
+            CleanEventLogs();
+
+            
+
+            */
+            RunSystemFileChecker();
+
+            _logger.LogInformation("All cleanup tasks completed successfully.");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error running cleanup tasks");
+            return false;
+        }
+    }
 
     [DllImport("Shell32.dll")]
-    static extern int SHEmptyRecycleBin(IntPtr hwnd, string pszRootPath, uint dwFlags);
+    private static extern int SHEmptyRecycleBin(IntPtr hwnd, string pszRootPath, uint dwFlags);
+
+    private const uint SHERB_NOCONFIRMATION = 0x00000001;
+    private const uint SHERB_NOPROGRESSUI = 0x00000002;
+    private const uint SHERB_NOSOUND = 0x00000004;
 
     public void EmptyRecycleBin()
     {
         try
         {
-            SHEmptyRecycleBin(IntPtr.Zero, null, 0);
+            uint flags = SHERB_NOCONFIRMATION | SHERB_NOPROGRESSUI | SHERB_NOSOUND;
+            SHEmptyRecycleBin(IntPtr.Zero, null, flags);
             _logger.LogInformation("Recycle bin emptied successfully.");
         }
         catch (Exception ex)

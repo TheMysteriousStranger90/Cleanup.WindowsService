@@ -5,7 +5,7 @@ VisualStudioVersion = 17.10.35122.118
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cleanup.WindowsService", "Cleanup.WindowsService\Cleanup.WindowsService.csproj", "{248D43F9-2F42-4F0E-8FD5-2699E6E71E06}"
 EndProject
-Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Cleanup.WindowsService.Installer", "Cleanup.WindowsService.Installer\Cleanup.WindowsService.Installer.vdproj", "{91F8F48F-C841-43B9-872E-51FADCE9CB01}"
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Cleanup.WindowsService.Installer", "Cleanup.WindowsService.Installer\Cleanup.WindowsService.Installer.vdproj", "{6231A7E6-9553-4566-8762-50C40B5665D7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +17,13 @@ Global
 		{248D43F9-2F42-4F0E-8FD5-2699E6E71E06}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{248D43F9-2F42-4F0E-8FD5-2699E6E71E06}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{248D43F9-2F42-4F0E-8FD5-2699E6E71E06}.Release|Any CPU.Build.0 = Release|Any CPU
-		{91F8F48F-C841-43B9-872E-51FADCE9CB01}.Debug|Any CPU.ActiveCfg = Debug
-		{91F8F48F-C841-43B9-872E-51FADCE9CB01}.Release|Any CPU.ActiveCfg = Release
+		{6231A7E6-9553-4566-8762-50C40B5665D7}.Debug|Any CPU.ActiveCfg = Debug
+		{6231A7E6-9553-4566-8762-50C40B5665D7}.Release|Any CPU.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0511A86F-7013-4162-8416-9FF69BE87244}
 	EndGlobalSection
 EndGlobal

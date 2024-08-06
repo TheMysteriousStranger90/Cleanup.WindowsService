@@ -29,6 +29,8 @@ public sealed class CleanupService
             CleanWindowsTempFolder();
             CleanLogFiles();
             CleanEventLogs();
+            EraseInternetExplorerHistory();
+            RunDISMOperations();
             RunSystemFileChecker();
 
             _logger.LogInformation("All cleanup tasks completed successfully.");
@@ -48,7 +50,7 @@ public sealed class CleanupService
     private const uint SHERB_NOPROGRESSUI = 0x00000002;
     private const uint SHERB_NOSOUND = 0x00000004;
 
-    public void EmptyRecycleBin()
+    private void EmptyRecycleBin()
     {
         try
         {
@@ -62,31 +64,31 @@ public sealed class CleanupService
         }
     }
 
-    public void CleanTempFolder()
+    private void CleanTempFolder()
     {
         CleanDirectory(Path.GetTempPath(), "Temp folder");
     }
 
-    public void CleanDownloadsFolder()
+    private void CleanDownloadsFolder()
     {
         string downloadsPath =
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
         CleanDirectory(downloadsPath, "Downloads");
     }
 
-    public void CleanPrefetchFolder()
+    private void CleanPrefetchFolder()
     {
         string prefetchPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Prefetch");
         CleanDirectory(prefetchPath, "Prefetch");
     }
 
-    public void CleanWindowsTempFolder()
+    private void CleanWindowsTempFolder()
     {
         string windowsTempPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp");
         CleanDirectory(windowsTempPath, "Temp");
     }
 
-    public void CleanLogFiles()
+    private void CleanLogFiles()
     {
         string[] logPaths =
         {
@@ -107,7 +109,7 @@ public sealed class CleanupService
         }
     }
 
-    public void CleanEventLogs()
+    private void CleanEventLogs()
     {
         try
         {
@@ -135,7 +137,7 @@ public sealed class CleanupService
         }
     }
 
-    public void CleanOldFiles()
+    private void CleanOldFiles()
     {
         string[] oldFilePatterns = { "*.old", "*.bak", "*.tmp" };
         string[] directoriesToClean =
@@ -153,7 +155,7 @@ public sealed class CleanupService
         }
     }
 
-    public void CleanTraceFiles()
+    private void CleanTraceFiles()
     {
         string[] traceFilePatterns = { "*.trace" };
         string[] directoriesToClean =
@@ -171,7 +173,7 @@ public sealed class CleanupService
         }
     }
 
-    public void CleanHistory()
+    private void CleanHistory()
     {
         string historyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.History));
         if (Directory.Exists(historyPath))
@@ -180,7 +182,7 @@ public sealed class CleanupService
         }
     }
 
-    public void CleanCookies()
+    private void CleanCookies()
     {
         string cookiesPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Cookies));
         if (Directory.Exists(cookiesPath))
@@ -189,7 +191,7 @@ public sealed class CleanupService
         }
     }
 
-    public void CleanRemnantDriverFiles()
+    private void CleanRemnantDriverFiles()
     {
         string[] driverPaths = { "C:\\AMD", "C:\\NVIDIA", "C:\\INTEL" };
 
@@ -202,7 +204,7 @@ public sealed class CleanupService
         }
     }
 
-    public void ResetDnsResolverCache()
+    private void ResetDnsResolverCache()
     {
         try
         {
@@ -222,7 +224,58 @@ public sealed class CleanupService
         }
     }
 
-    public void RunSystemFileChecker()
+    private void EraseInternetExplorerHistory()
+    {
+        try
+        {
+            _logger.LogInformation("Attempting to erase Internet Explorer temporary data...");
+
+            Process process = new Process();
+            process.StartInfo.FileName = "rundll32.exe";
+            process.StartInfo.Arguments = "inetcpl.cpl,ClearMyTracksByProcess 4351";
+            process.StartInfo.CreateNoWindow = true;
+            process.StartInfo.UseShellExecute = false;
+            process.Start();
+            process.WaitForExit();
+
+            _logger.LogInformation("Internet Explorer temporary data erased successfully.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Failed to erase Internet Explorer temporary data: {ex.Message}");
+        }
+    }
+
+    private void RunDISMOperations()
+    {
+        try
+        {
+            _logger.LogInformation("Running DISM to clean old service pack files...");
+
+            Process process = new Process();
+            process.StartInfo.FileName = "dism.exe";
+            process.StartInfo.Arguments = "/online /cleanup-Image /spsuperseded";
+            process.StartInfo.CreateNoWindow = true;
+            process.StartInfo.UseShellExecute = false;
+            process.Start();
+            process.WaitForExit();
+
+            if (process.ExitCode == 0)
+            {
+                _logger.LogInformation("DISM operation completed successfully.");
+            }
+            else
+            {
+                _logger.LogInformation($"DISM operation failed. Exit code: {process.ExitCode}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Failed to run DISM operation: {ex.Message}");
+        }
+    }
+
+    private void RunSystemFileChecker()
     {
         try
         {

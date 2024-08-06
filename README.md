@@ -46,6 +46,7 @@ The service runs as a background service and performs cleanup tasks at regular i
 - Removing old and temporary files
 - Resetting DNS cache
 - Running System File Checker
+- Logs are saved in the CleanupWindowsService folder in MyDocuments.
 
 ## Contributions
 

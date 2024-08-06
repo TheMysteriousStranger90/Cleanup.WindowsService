@@ -1,15 +1,14 @@
-using System;
-using System.IO;
 using Cleanup.WindowsService;
 using Microsoft.Extensions.Logging.Configuration;
 using Microsoft.Extensions.Logging.EventLog;
 using CliWrap;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using static Cleanup.WindowsService.CleanupConstants;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddWindowsService(options => { options.ServiceName = "Cleanup Windows Service"; });
+
+builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+
+builder.Services.AddWindowsService(options => { options.ServiceName = ServiceName; });
 
 LoggerProviderOptions.RegisterProviderOptions<
     EventLogSettings, EventLogLoggerProvider>(builder.Services);
@@ -20,8 +19,13 @@ builder.Services.AddHostedService<WindowsBackgroundService>();
 builder.Logging.AddConfiguration(
     builder.Configuration.GetSection("Logging"));
 
-const string ServiceName = "Cleanup Windows Service";
-const string ServiceDescription = "Cleanup.WindowsService is a Windows service designed to perform various system cleanup tasks, such as emptying the recycle bin, cleaning temporary folders, and removing old log files.";
+builder.Logging.AddEventLog(settings =>
+{
+    settings.SourceName = ServiceName;
+});
+
+string logFilePath = WindowsServicePathHelperForLogs.GenerateWindowsServiceFilePath();
+builder.Logging.AddProvider(new FileLoggerProvider(logFilePath));
 
 if (args is { Length: 1 })
 {
@@ -33,7 +37,7 @@ if (args is { Length: 1 })
         if (args[0] is "/Install")
         {
             await Cli.Wrap("sc")
-                .WithArguments(new[] { "create", ServiceName, $"binPath={executablePath}", "start=auto" })
+                .WithArguments(new[] { "create", ServiceName, $"binPath={executablePath}", "start=auto", "obj=LocalSystem" })
                 .ExecuteAsync();
             
             await Cli.Wrap("sc")

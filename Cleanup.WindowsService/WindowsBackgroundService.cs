@@ -11,11 +11,18 @@ public sealed class WindowsBackgroundService : BackgroundService
 {
     private readonly CleanupService _cleanupService;
     private readonly ILogger<WindowsBackgroundService> _logger;
-
+    private readonly ILogger _fileLogger;
+    private readonly string _logFilePath = WindowsServicePathHelperForLogs.GenerateWindowsServiceFilePath();
     public WindowsBackgroundService(
         CleanupService cleanupService,
-        ILogger<WindowsBackgroundService> logger) =>
-        (_cleanupService, _logger) = (cleanupService, logger);
+        ILogger<WindowsBackgroundService> logger)
+    {
+        _cleanupService = cleanupService;
+        _logger = logger;
+        
+        var fileLoggerProvider = new FileLoggerProvider(_logFilePath);
+        _fileLogger = fileLoggerProvider.CreateLogger(nameof(WindowsBackgroundService));
+    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -29,44 +36,27 @@ public sealed class WindowsBackgroundService : BackgroundService
                 {
                     _logger.LogInformation("Cleanup started at: {time}", DateTimeOffset.Now);
                 }
+                
+                bool success = _cleanupService.RunCleanupTasks();
 
-                string logFilePath = WindowsServicePathHelperForLogs.GenerateWindowsServiceFilePath();
-
-                using (var writer = new StreamWriter(logFilePath, true))
+                if (_logger.IsEnabled(LogLevel.Information))
                 {
-                    bool success = _cleanupService.RunCleanupTasks();
-
-                    if (_logger.IsEnabled(LogLevel.Information))
-                    {
-                        writer.WriteLine("Cleanup finished at: {0}", DateTimeOffset.Now);
-                        _logger.LogInformation("Cleanup finished at: {time}", DateTimeOffset.Now);
-                    }
-
-                    var delayTime = success ? TimeSpan.FromHours(1) : TimeSpan.FromHours(2);
-
-                    writer.WriteLine(success ? "Next cleanup scheduled in 24 hours." : "Retry scheduled in 2 hours.");
-                    writer.Flush();
-
-                    await Task.Delay(delayTime, stoppingToken);
+                    _logger.LogInformation("Cleanup finished at: {time}", DateTimeOffset.Now);
                 }
+
+                var delayTime = success ? TimeSpan.FromDays(1) : TimeSpan.FromHours(2);
+
+                _logger.LogInformation(success ? "Next cleanup scheduled in 24 hours." : "Retry scheduled in 2 hours.");
+
+                await Task.Delay(delayTime, stoppingToken);
             }
             catch (OperationCanceledException)
             {
-                // Когда токен остановки отменяется, например, при вызове из services.msc,
-                // не следует завершать с ненулевым кодом выхода. Другими словами, это ожидаемое...
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "{Message}", ex.Message);
-
-                // Завершает этот процесс и возвращает код выхода в операционную систему.
-                // Это необходимо, чтобы избежать 'BackgroundServiceExceptionBehavior', который
-                // выполняет один из двух сценариев:
-                // 1. Когда установлено "Ignore": ничего не делать, ошибки вызывают зомби-сервисы.
-                // 2. Когда установлено "StopHost": чисто остановить хост и записать ошибки в лог.
-                //
-                // Для того чтобы система управления сервисами Windows могла использовать
-                // настроенные параметры восстановления, необходимо завершить процесс с ненулевым кодом выхода.
+                
                 Environment.Exit(1);
             }
         }

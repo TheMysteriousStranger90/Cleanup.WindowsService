@@ -34,8 +34,7 @@ if (args is { Length: 1 })
         if (args[0] is "/Install")
         {
             await Cli.Wrap("sc")
-                .WithArguments(new[]
-                    { "create", ServiceName, $"binPath={executablePath}", "start=auto", "obj=LocalSystem" })
+                .WithArguments(new[] { "create", ServiceName, $"binPath={executablePath}", "start=auto" })
                 .ExecuteAsync();
 
             await Cli.Wrap("sc")

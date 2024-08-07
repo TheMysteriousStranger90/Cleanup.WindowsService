@@ -29,9 +29,9 @@ public sealed class WindowsBackgroundService : BackgroundService
                     _logger.LogInformation("Cleanup finished at: {time}", DateTimeOffset.Now);
                 }
 
-                var delayTime = success ? TimeSpan.FromDays(1) : TimeSpan.FromHours(6);
+                var delayTime = success ? TimeSpan.FromHours(12) : TimeSpan.FromHours(6);
                 
-                _logger.LogInformation(success ? "Next cleanup scheduled in 24 hours." : "Retry scheduled in 2 hours.");
+                _logger.LogInformation(success ? "Next cleanup scheduled in 12 hours." : "Retry scheduled in 6 hours.");
 
                 await Task.Delay(delayTime, stoppingToken);
             }

@@ -8,6 +8,5 @@
         "DOTNET_ENVIRONMENT": "Development"
       }
     }
-  },
-  "dotnetRunMessages": "true"
+  }
 }

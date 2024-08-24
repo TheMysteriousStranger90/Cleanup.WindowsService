@@ -4,32 +4,17 @@ using Microsoft.Extensions.Logging.EventLog;
 using CliWrap;
 using static Cleanup.WindowsService.CleanupConstants;
 
-HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
-
-builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
-
-builder.Services.AddWindowsService(options => { options.ServiceName = ServiceName; });
-
-LoggerProviderOptions.RegisterProviderOptions<
-    EventLogSettings, EventLogLoggerProvider>(builder.Services);
-
-builder.Services.AddSingleton<CleanupService>();
-builder.Services.AddHostedService<WindowsBackgroundService>();
-
-builder.Logging.AddConfiguration(
-    builder.Configuration.GetSection("Logging"));
-
-builder.Logging.AddEventLog(settings => { settings.SourceName = ServiceName; });
-
-string logFilePath = WindowsServicePathHelperForLogs.GenerateWindowsServiceFilePath();
-builder.Logging.AddProvider(new FileLoggerProvider(logFilePath));
+if (PrivilegeManager.EnsureAdminPrivileges(true, ServiceName) == false)
+{
+    Environment.Exit(1);
+    return;
+}
 
 if (args is { Length: 1 })
 {
     try
     {
-        string executablePath =
-            Path.Combine(AppContext.BaseDirectory, "Cleanup.WindowsService.exe");
+        string executablePath = Path.Combine(AppContext.BaseDirectory, "Cleanup.WindowsService.exe");
 
         if (args[0] is "/Install")
         {
@@ -76,5 +61,29 @@ if (args is { Length: 1 })
     return;
 }
 
-IHost host = builder.Build();
-host.Run();
+string logFilePath = WindowsServicePathHelperForLogs.GenerateWindowsServiceFilePath();
+
+IHost host = Host.CreateDefaultBuilder(args)
+    .ConfigureAppConfiguration((context, config) =>
+    {
+        config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+    })
+    .ConfigureServices((context, services) =>
+    {
+        services.AddSingleton<CleanupService>();
+        services.AddHostedService<WindowsBackgroundService>();
+    })
+    .UseWindowsService(options =>
+    {
+        options.ServiceName = ServiceName;
+    })
+    .ConfigureLogging((context, logging) =>
+    {
+        logging.ClearProviders();
+        logging.AddConsole();
+        logging.AddEventLog();
+        logging.AddProvider(new FileLoggerProvider(logFilePath));
+    })
+    .Build();
+
+await host.RunAsync();

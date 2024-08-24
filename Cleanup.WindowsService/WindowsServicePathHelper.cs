@@ -7,8 +7,10 @@ public static class WindowsServicePathHelperForLogs
 {
     public static string GenerateWindowsServiceFilePath()
     {
-        var logDirectoryPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-            "CleanupWindowsService");
+        string userProfile = Environment.GetEnvironmentVariable("USERPROFILE") 
+                             ?? throw new InvalidOperationException("USERPROFILE environment variable is not set.");
+        
+        string logDirectoryPath = Path.Combine(userProfile, "Documents", "CleanupWindowsService");
 
         Directory.CreateDirectory(logDirectoryPath);
 

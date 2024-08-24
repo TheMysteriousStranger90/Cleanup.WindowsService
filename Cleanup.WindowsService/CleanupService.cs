@@ -12,7 +12,7 @@ public sealed class CleanupService
         _logger = logger;
     }
 
-    public bool RunCleanupTasks()
+    public void RunCleanupTasks()
     {
         try
         {
@@ -31,15 +31,12 @@ public sealed class CleanupService
             CleanEventLogs();
             EraseInternetExplorerHistory();
             RunDISMOperations();
-            RunSystemFileChecker();
 
             _logger.LogInformation("All cleanup tasks completed successfully.");
-            return true;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error running cleanup tasks");
-            return false;
         }
     }
 
@@ -64,40 +61,132 @@ public sealed class CleanupService
         }
     }
 
+    private void CleanDownloadsFolder()
+    {
+        string userProfile = Environment.GetEnvironmentVariable("USERPROFILE")
+                             ?? throw new InvalidOperationException("USERPROFILE environment variable is not set.");
+
+        string downloadsPath = Path.Combine(userProfile, "Downloads");
+        CleanDirectory(downloadsPath, "Downloads");
+    }
+
+    private void CleanOldFiles()
+    {
+        string userProfile = Environment.GetEnvironmentVariable("USERPROFILE")
+                             ?? throw new InvalidOperationException("USERPROFILE environment variable is not set.");
+
+        string[] oldFilePatterns = { "*.old", "*.bak", "*.tmp" };
+        string[] directoriesToClean =
+        {
+            Environment.GetFolderPath(Environment.SpecialFolder.Windows),
+            userProfile
+        };
+
+        foreach (var dir in directoriesToClean)
+        {
+            foreach (var pattern in oldFilePatterns)
+            {
+                DeleteFilesByPattern(dir, pattern);
+            }
+        }
+    }
+
+    private void CleanTraceFiles()
+    {
+        string userProfile = Environment.GetEnvironmentVariable("USERPROFILE")
+                             ?? throw new InvalidOperationException("USERPROFILE environment variable is not set.");
+
+        string[] traceFilePatterns = { "*.trace" };
+        string[] directoriesToClean =
+        {
+            Environment.GetFolderPath(Environment.SpecialFolder.Windows),
+            userProfile
+        };
+
+        foreach (var dir in directoriesToClean)
+        {
+            foreach (var pattern in traceFilePatterns)
+            {
+                DeleteFilesByPattern(dir, pattern);
+            }
+        }
+    }
+
+    private void CleanCookies()
+    {
+        string userProfile = Environment.GetEnvironmentVariable("USERPROFILE")
+                             ?? throw new InvalidOperationException("USERPROFILE environment variable is not set.");
+
+        string cookiesPath = Path.Combine(userProfile, "AppData", "Roaming", "Microsoft", "Windows", "Cookies");
+        if (Directory.Exists(cookiesPath))
+        {
+            CleanDirectory(cookiesPath, "Cookies");
+        }
+    }
+
+    private void CleanHistory()
+    {
+        string userProfile = Environment.GetEnvironmentVariable("USERPROFILE")
+                             ?? throw new InvalidOperationException("USERPROFILE environment variable is not set.");
+
+        string historyPath = Path.Combine(userProfile, "AppData", "Local", "Microsoft", "Windows", "History");
+        if (Directory.Exists(historyPath))
+        {
+            CleanDirectory(historyPath, "History");
+        }
+    }
+
+    private void CleanRemnantDriverFiles()
+    {
+        string userProfile = Environment.GetEnvironmentVariable("USERPROFILE")
+                             ?? throw new InvalidOperationException("USERPROFILE environment variable is not set.");
+
+        string[] driverPaths =
+        {
+            Path.Combine(userProfile, "AMD"),
+            Path.Combine(userProfile, "NVIDIA"),
+            Path.Combine(userProfile, "INTEL")
+        };
+
+        foreach (var driverPath in driverPaths)
+        {
+            if (Directory.Exists(driverPath))
+            {
+                CleanDirectory(driverPath, "Remnant driver files");
+            }
+        }
+    }
+
     private void CleanTempFolder()
     {
         CleanDirectory(Path.GetTempPath(), "Temp folder");
     }
 
-    private void CleanDownloadsFolder()
-    {
-        string downloadsPath =
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
-        CleanDirectory(downloadsPath, "Downloads");
-    }
-
     private void CleanPrefetchFolder()
     {
-        string prefetchPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Prefetch");
+        string windowsPath = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        string prefetchPath = Path.Combine(windowsPath, "Prefetch");
         CleanDirectory(prefetchPath, "Prefetch");
     }
 
     private void CleanWindowsTempFolder()
     {
-        string windowsTempPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp");
+        string windowsPath = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        string windowsTempPath = Path.Combine(windowsPath, "Temp");
         CleanDirectory(windowsTempPath, "Temp");
     }
 
     private void CleanLogFiles()
     {
+        string windowsPath = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        string programDataPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+
         string[] logPaths =
         {
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Logs"),
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Panther"),
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "SoftwareDistribution",
-                "Download"),
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Microsoft",
-                "Windows", "WER", "Temp")
+            Path.Combine(windowsPath, "Logs"),
+            Path.Combine(windowsPath, "Panther"),
+            Path.Combine(windowsPath, "SoftwareDistribution", "Download"),
+            Path.Combine(programDataPath, "Microsoft", "Windows", "WER", "Temp")
         };
 
         foreach (var logPath in logPaths)
@@ -134,73 +223,6 @@ public sealed class CleanupService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error cleaning event logs");
-        }
-    }
-
-    private void CleanOldFiles()
-    {
-        string[] oldFilePatterns = { "*.old", "*.bak", "*.tmp" };
-        string[] directoriesToClean =
-        {
-            Environment.GetFolderPath(Environment.SpecialFolder.Windows),
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
-        };
-
-        foreach (var dir in directoriesToClean)
-        {
-            foreach (var pattern in oldFilePatterns)
-            {
-                DeleteFilesByPattern(dir, pattern);
-            }
-        }
-    }
-
-    private void CleanTraceFiles()
-    {
-        string[] traceFilePatterns = { "*.trace" };
-        string[] directoriesToClean =
-        {
-            Environment.GetFolderPath(Environment.SpecialFolder.Windows),
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
-        };
-
-        foreach (var dir in directoriesToClean)
-        {
-            foreach (var pattern in traceFilePatterns)
-            {
-                DeleteFilesByPattern(dir, pattern);
-            }
-        }
-    }
-
-    private void CleanHistory()
-    {
-        string historyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.History));
-        if (Directory.Exists(historyPath))
-        {
-            CleanDirectory(historyPath, "History");
-        }
-    }
-
-    private void CleanCookies()
-    {
-        string cookiesPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Cookies));
-        if (Directory.Exists(cookiesPath))
-        {
-            CleanDirectory(cookiesPath, "Cookies");
-        }
-    }
-
-    private void CleanRemnantDriverFiles()
-    {
-        string[] driverPaths = { "C:\\AMD", "C:\\NVIDIA", "C:\\INTEL" };
-
-        foreach (var driverPath in driverPaths)
-        {
-            if (Directory.Exists(driverPath))
-            {
-                CleanDirectory(driverPath, "Remnant driver files");
-            }
         }
     }
 
@@ -326,8 +348,7 @@ public sealed class CleanupService
             _logger.LogError(ex, $"Error cleaning {folderName}");
         }
     }
-
-
+    
     private void TryDeleteFile(FileInfo file)
     {
         const int MaxRetries = 1;

@@ -10,39 +10,48 @@ public sealed class WindowsBackgroundService : BackgroundService
         _cleanupService = cleanupService;
         _logger = logger;
     }
+    
+    public override async Task StartAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Service is starting...");
+
+        await base.StartAsync(cancellationToken);
+    }
+    
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Service is stopping...");
+
+        await base.StopAsync(cancellationToken);
+    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        _logger.LogInformation("Service execution started.");
+
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                if (_logger.IsEnabled(LogLevel.Information))
-                {
-                    _logger.LogInformation("Cleanup started at: {time}", DateTimeOffset.Now);
-                }
+                _logger.LogInformation("Cleanup started at: {time}", DateTimeOffset.Now);
 
-                bool success = _cleanupService.RunCleanupTasks();
+                _cleanupService.RunCleanupTasks();
 
-                if (_logger.IsEnabled(LogLevel.Information))
-                {
-                    _logger.LogInformation("Cleanup finished at: {time}", DateTimeOffset.Now);
-                }
+                _logger.LogInformation("Cleanup finished at: {time}", DateTimeOffset.Now);
+                _logger.LogInformation("Next cleanup scheduled in 12 hours.");
 
-                var delayTime = success ? TimeSpan.FromHours(12) : TimeSpan.FromHours(6);
-                
-                _logger.LogInformation(success ? "Next cleanup scheduled in 12 hours." : "Retry scheduled in 6 hours.");
-
-                await Task.Delay(delayTime, stoppingToken);
+                await Task.Delay(TimeSpan.FromHours(12), stoppingToken);
             }
             catch (OperationCanceledException)
             {
+                _logger.LogInformation("Service is stopping due to cancellation.");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "{Message}", ex.Message);
+                _logger.LogError(ex, "An unhandled exception occurred: {Message}", ex.Message);
 
-                Environment.Exit(1);
+                _logger.LogInformation("Retry scheduled in 1 hour due to an error.");
+                await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
             }
         }
     }

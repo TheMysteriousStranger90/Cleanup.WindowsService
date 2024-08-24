@@ -3,37 +3,35 @@
 public class FileLogger : ILogger
 {
     private readonly string _filePath;
+    private readonly object _lock = new object();
 
     public FileLogger(string filePath)
     {
         _filePath = filePath;
     }
 
-    public IDisposable? BeginScope<TState>(TState state) => null;
+    public IDisposable BeginScope<TState>(TState state) => null;
 
     public bool IsEnabled(LogLevel logLevel) => true;
 
-    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
     {
-        if (!IsEnabled(logLevel)) return;
-
-        var logRecord = $"{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")} [{logLevel}] {formatter(state, exception)}";
-
-        if (exception != null)
+        if (formatter == null)
         {
-            logRecord += $"\nException: {exception}";
+            throw new ArgumentNullException(nameof(formatter));
         }
 
-        try
+        string message = formatter(state, exception);
+        if (string.IsNullOrEmpty(message))
         {
-            lock (_filePath)
-            {
-                File.AppendAllText(_filePath, logRecord + Environment.NewLine);
-            }
+            return;
         }
-        catch (Exception ex)
+
+        string logRecord = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [{logLevel}] {message}";
+
+        lock (_lock)
         {
-            Console.WriteLine($"Error writing to log file: {ex.Message}");
+            File.AppendAllText(_filePath, logRecord + Environment.NewLine);
         }
     }
 }

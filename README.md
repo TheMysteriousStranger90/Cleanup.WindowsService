@@ -45,7 +45,7 @@ Cleanup.WindowsService is a Windows service designed to perform various system c
 
 ## Usage
 
-The service runs as a background service and performs cleanup tasks at regular intervals (once a day). The main cleanup tasks include:
+The service runs as a background service and performs cleanup tasks at regular intervals (next cleanup scheduled in 12 hours). The main cleanup tasks include:
 
 - Emptying the recycle bin
 - Cleaning various system folders

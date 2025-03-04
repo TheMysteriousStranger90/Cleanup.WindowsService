@@ -47,12 +47,49 @@ Cleanup.WindowsService is a Windows service designed to perform various system c
 
 The service runs as a background service and performs cleanup tasks at regular intervals (next cleanup scheduled in 12 hours). The main cleanup tasks include:
 
+### System Maintenance
 - Emptying the recycle bin
-- Cleaning various system folders
-- Removing old and temporary files
-- Resetting DNS cache
-- Running System File Checker
-- Logs are saved in the CleanupWindowsService folder in MyDocuments.
+- Cleaning temporary folders
+- Cleaning prefetch folder
+- Resetting DNS resolver cache
+- Running DISM cleanup operations
+- Running system file checker
+- Managing system restore points
+- Cleaning Windows update cache
+- Cleaning log files and event logs
+- Cleaning memory dump files
+
+### File System Cleaning
+- Cleaning downloads folder (files older than retention setting)
+- Cleaning old files (*.old, *.bak, *.tmp)
+- Cleaning trace files
+- Cleaning thumbnail cache
+
+### Browser Cleanup
+- Cleaning Chrome browser cache
+- Cleaning Firefox browser cache
+- Cleaning Internet Explorer temporary data
+
+### Logs and Monitoring
+Logs are saved in multiple locations:
+
+- File Logs: Located in %USERPROFILE%\Documents\CleanupWindowsService\logs
+- Console Output: When running the service in interactive mode
+
+## Troubleshooting
+### Common Issues
+
+Service fails to start
+
+- Check if .NET Runtime is installed
+- Verify the service account has proper permissions
+- Check log files for detailed error messages
+
+Cleanup tasks not completing
+
+- Some files may be locked by other processes
+- The service may not have adequate permissions
+- Check logs for specific error details
 
 ## Contributions
 

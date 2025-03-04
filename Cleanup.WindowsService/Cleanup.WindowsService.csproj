@@ -18,6 +18,7 @@
         <PackageReference Include="CliWrap" Version="3.6.6" />
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
         <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.0" />
+        <PackageReference Include="System.Management" Version="8.0.0" />
     </ItemGroup>
 
 </Project>

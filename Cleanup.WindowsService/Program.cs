@@ -44,7 +44,7 @@ if (args is { Length: 1 })
                 .WithArguments(new[]
                 {
                     "create", ServiceName, $"binPath=\"{executablePath}\"", "start=auto",
-                    "displayname=\"Windows System Cleanup Service\""
+                    "displayname=\"Cleanup Windows Service\""
                 })
                 .WithValidation(CommandResultValidation.None)
                 .ExecuteBufferedAsync();
@@ -193,7 +193,6 @@ try
             services.AddTransient<WindowsUpdateCacheTask>();
             services.AddTransient<ThumbnailCacheCleanupTask>();
             services.AddTransient<MemoryDumpCleanupTask>();
-            services.AddTransient<SystemFileCheckerTask>();
 
             // Register browser-related tasks
             services.AddTransient<ChromeCleanupTask>();

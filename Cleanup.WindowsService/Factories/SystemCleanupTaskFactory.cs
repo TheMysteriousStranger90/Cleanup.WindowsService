@@ -38,7 +38,6 @@ public class SystemCleanupTaskFactory : ICleanupTaskFactory
         yield return _serviceProvider.GetRequiredService<DismOperationsTask>();
         yield return _serviceProvider.GetRequiredService<SystemRestorePointsTask>();
         yield return _serviceProvider.GetRequiredService<WindowsUpdateCacheTask>();
-        yield return _serviceProvider.GetRequiredService<SystemFileCheckerTask>();
         
         yield return new DirectoryCleanupTask(
             _loggerFactory.CreateLogger<DirectoryCleanupTask>(), 
